@@ -657,6 +657,23 @@ func getChildrenWithSiblingType(parent *html.Node, st siblingType, skipNode *htm
 		}
 	}
 
+	// For the collect-all sibling types, the iterator is a pure function of
+	// the tree (no predicate, no early exit), so we can cheaply walk once to
+	// count the results and pre-size the slice, avoiding repeated grow-and-copy
+	// reallocations. Skip the ...Until cases (predicate would run twice) and
+	// the single-result Next/Prev cases (at most one element).
+	switch st {
+	case siblingAll, siblingAllIncludingNonElements, siblingPrevAll, siblingNextAll:
+		n := 0
+		for c := iter(nil); c != nil; c = iter(c) {
+			n++
+		}
+		if n == 0 {
+			return nil
+		}
+		result = make([]*html.Node, 0, n)
+	}
+
 	for c := iter(nil); c != nil; c = iter(c) {
 		// If this is an ...Until case, test before append (returns true
 		// if the until condition is reached)
